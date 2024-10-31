@@ -226,9 +226,9 @@ export default {
       try {
         console.log('Starting to load filter data...');
         const [manufacturersRes, categoriesRes, tagsRes] = await Promise.all([
-          axios.get('http://127.0.0.1:5001/api/product-manufacturer'), // Dit was 'manufacturers'
-          axios.get('http://127.0.0.1:5001/api/category'),
-          axios.get('http://127.0.0.1:5001/api/tag')
+          axios.get('http://127.0.0.1:5000/api/product-manufacturer'),
+          axios.get('http://127.0.0.1:5000/api/category'),
+          axios.get('http://127.0.0.1:5000/api/tag')
         ]);
 
         console.log('API Responses:', {
@@ -317,7 +317,7 @@ export default {
       }
 
       try {
-        const response = await axios.post('http://127.0.0.1:5001/api/preview-matching-products', {
+        const response = await axios.post('http://127.0.0.1:5000/api/preview-matching-products', {
           conditions: this.discountData.conditions
         });
         this.matchingProductsCount = response.data.count;
@@ -328,25 +328,35 @@ export default {
 
     async createDiscount() {
       this.isCreating = true;
-      this.errorMessage = '';
       try {
-        await axios.post('http://127.0.0.1:5001/api/discounts', {
+        console.log('Creating discount with data:', this.discountData); // Debug log
+        const response = await axios.post('http://127.0.0.1:5000/api/discounts', {
           name: this.discountData.name,
-          percentage: this.discountData.percentage,
+          percentage: parseFloat(this.discountData.percentage),
           conditions: this.discountData.conditions
+        }, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
+        console.log('Response:', response.data); // Debug log
 
         this.successMessage = 'Korting succesvol aangemaakt!';
         this.$emit('discount-created');
         this.resetForm();
       } catch (error) {
         console.error('Error creating discount:', error);
-        this.errorMessage = 'Kon de korting niet aanmaken';
+        if (error.response) {
+          console.error('Error response:', error.response.data);
+          console.error('Error status:', error.response.status);
+        }
+        this.errorMessage = error.response?.data?.message || 'Kon de korting niet aanmaken';
       } finally {
         this.isCreating = false;
       }
     }
   },
+
   async mounted() {
     await this.loadFilterData();
   }

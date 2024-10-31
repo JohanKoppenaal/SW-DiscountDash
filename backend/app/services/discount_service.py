@@ -72,16 +72,70 @@ class DiscountService:
             self.db.close()
 
     def get_discounts(self) -> List[Dict[str, Any]]:
-        """Get all discounts"""
-        discounts = self.db.query(Discount).order_by(Discount.created_at.desc()).all()
-        return [{
-            'id': d.id,
-            'name': d.name,
-            'percentage': d.percentage,
-            'conditions': d.conditions,
-            'affected_products': d.affected_products,
-            'created_at': d.created_at.isoformat()
-        } for d in discounts]
+        """Get all discounts with resolved names"""
+        try:
+            discounts = self.db.query(Discount).order_by(Discount.created_at.desc()).all()
+
+            # Format discounts with resolved names
+            formatted_discounts = []
+            for discount in discounts:
+                formatted_discount = {
+                    'id': discount.id,
+                    'name': discount.name,
+                    'percentage': discount.percentage,
+                    'affected_products': discount.affected_products,
+                    'created_at': discount.created_at.isoformat() if discount.created_at else None,
+                    'conditions': []
+                }
+
+                # Resolve names for each condition
+                for group in discount.conditions:
+                    formatted_group = {
+                        'operator': group['operator'],
+                        'conditions': []
+                    }
+
+                    for condition in group['conditions']:
+                        # Get name based on type and ID
+                        name = self._get_name_for_condition(condition)
+
+                        formatted_condition = {
+                            'type': condition['type'],
+                            'operator': condition['operator'],
+                            'value': condition['value'],
+                            'name': name  # Add resolved name
+                        }
+                        formatted_group['conditions'].append(formatted_condition)
+
+                    formatted_discount['conditions'].append(formatted_group)
+
+                formatted_discounts.append(formatted_discount)
+
+            return formatted_discounts
+
+        except Exception as e:
+            print(f"Error in get_discounts: {str(e)}")
+            raise
+
+    def _get_name_for_condition(self, condition: Dict) -> str:
+        """Get name for a condition value based on its type"""
+        try:
+            if condition['type'] == 'manufacturer':
+                response = self.shopware_service.get_manufacturers()
+                manufacturers = {m['id']: m['name'] for m in response}
+                return manufacturers.get(condition['value'], condition['value'])
+
+            elif condition['type'] == 'category':
+                response = self.shopware_service.get_categories()
+                categories = {c['id']: c['name'] for c in response}
+                return categories.get(condition['value'], condition['value'])
+
+            elif condition['type'] == 'tag':
+                response = self.shopware_service.get_tags()
+                tags = {t['id']: t['name'] for t in response}
+                return tags.get(condition['value'], condition['value'])
+
+            return condition['value']
 
     def get_discount(self, discount_id: int) -> Dict[str, Any]:
         """Get a specific discount"""

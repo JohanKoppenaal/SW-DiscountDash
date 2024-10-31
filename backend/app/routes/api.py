@@ -67,11 +67,12 @@ def update_prices():
 @bp.route('/product-manufacturer', methods=['GET'])
 def get_manufacturers():
     try:
-        print("API: Getting manufacturers...")  # Debug log
+        print("Getting manufacturers...")  # Debug log
         manufacturers = shopware_service.get_manufacturers()
+        print(f"Found {len(manufacturers)} manufacturers")  # Debug log
         return jsonify({'status': 'success', 'data': manufacturers})
     except Exception as e:
-        print(f"API Error getting manufacturers: {str(e)}")  # Debug log
+        print(f"Error getting manufacturers: {str(e)}")  # Debug log
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @bp.route('/category', methods=['GET'])
@@ -135,15 +136,20 @@ def create_discount():
 @bp.route('/discounts', methods=['GET'])
 def get_discounts():
     try:
-        print("API: Getting discounts...")  # Debug log
+        print("Getting discounts from database...")  # Debug log
         discounts = discount_service.get_discounts()
-        print(f"API: Found {len(discounts)} discounts")  # Debug log
+        print(f"Found {len(discounts)} discounts")  # Debug log
         return jsonify({'status': 'success', 'data': discounts})
     except Exception as e:
-        print(f"API Error getting discounts: {str(e)}")  # Debug log
+        print(f"Error getting discounts: {str(e)}")  # Debug log
         import traceback
-        print(f"API Error traceback: {traceback.format_exc()}")  # Full error traceback
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        print("Full traceback:")
+        print(traceback.format_exc())
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 
 @bp.route('/discounts/<int:discount_id>', methods=['DELETE'])

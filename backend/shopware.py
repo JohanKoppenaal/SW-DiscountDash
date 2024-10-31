@@ -3,13 +3,26 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from database import get_db
 
+
 class ShopwareService:
     _instance = None
 
+    def __new__(cls):
+            if cls._instance is None:
+                cls._instance = super(ShopwareService, cls).__new__(cls)
+                # Initialize instance attributes
+                cls._instance.access_token = None
+                cls._instance.base_url = None
+                cls._instance.client_id = None
+                cls._instance.client_secret = None
+                cls._instance.token_expires_at = None
+            return cls._instance
+
     def __init__(self):
-            self.access_token = None
-            self.token_expires_at = None
+        # Deze init wordt elke keer aangeroepen
+        if not hasattr(self, 'initialized'):
             self._load_credentials()
+            self.initialized = True
 
     def _load_credentials(self):
         with get_db() as db:
@@ -247,78 +260,92 @@ class ShopwareService:
             print(f"Error in restore_product_prices: {str(e)}")
             raise
 
-    def get_manufacturers(self) -> List[Dict[str, Any]]:
-        """Get all manufacturers from Shopware"""
-        if not self.ensure_token():
-            raise Exception("Could not authenticate with Shopware")
+    def get_manufacturers(self):
+            """Get all manufacturers from Shopware"""
+            if not self.ensure_token():
+                raise Exception("Could not authenticate with Shopware")
 
-        try:
-            response = requests.get(
-                f"{self.base_url}/api/product-manufacturer",  # Correcte endpoint
-                headers={
-                    "Authorization": f"Bearer {self.access_token}",
-                    "Accept": "application/json"
-                }
-            )
+            try:
+                response = requests.get(
+                    f"{self.base_url}/api/product-manufacturer",
+                    headers={
+                        "Authorization": f"Bearer {self.access_token}",
+                        "Accept": "application/json"
+                    }
+                )
 
-            print(f"Manufacturer response status: {response.status_code}")  # Debug log
-            if response.status_code != 200:
-                print(f"Error response: {response.text}")  # Debug log
+                print(f"Manufacturer response status: {response.status_code}")  # Debug log
+                if response.status_code != 200:
+                    print(f"Error response: {response.text}")  # Debug log
 
-            if response.status_code == 200:
-                return response.json().get('data', [])
-            else:
-                raise Exception(f"Error fetching manufacturers: {response.status_code}")
+                if response.status_code == 200:
+                    data = response.json()
+                    # Map de data naar het formaat dat we willen
+                    return [{
+                        "id": item["id"],
+                        "name": item["name"]
+                    } for item in data.get("data", [])]
+                else:
+                    raise Exception(f"Error fetching manufacturers: {response.status_code}")
 
-        except Exception as e:
-            print(f"Error getting manufacturers: {str(e)}")  # Debug log
-            raise
+            except Exception as e:
+                print(f"Error getting manufacturers: {str(e)}")
+                raise
 
-    def get_categories(self) -> List[Dict[str, Any]]:
-        """Get all categories from Shopware"""
-        if not self.ensure_token():
-            raise Exception("Could not authenticate with Shopware")
+    def get_categories(self):
+            """Get all categories from Shopware"""
+            if not self.ensure_token():
+                raise Exception("Could not authenticate with Shopware")
 
-        try:
-            response = requests.get(
-                f"{self.base_url}/api/category",
-                headers={
-                    "Authorization": f"Bearer {self.access_token}",
-                    "Accept": "application/json"
-                }
-            )
+            try:
+                response = requests.get(
+                    f"{self.base_url}/api/category",
+                    headers={
+                        "Authorization": f"Bearer {self.access_token}",
+                        "Accept": "application/json"
+                    }
+                )
 
-            if response.status_code == 200:
-                return response.json().get('data', [])
-            else:
-                raise Exception(f"Error fetching categories: {response.text}")
+                if response.status_code == 200:
+                    data = response.json()
+                    # Filter alleen actieve categorieën en map naar gewenst formaat
+                    return [{
+                        "id": item["id"],
+                        "name": item["name"]
+                    } for item in data.get("data", []) if item.get("active", True)]
+                else:
+                    raise Exception(f"Error fetching categories: {response.status_code}")
 
-        except Exception as e:
-            print(f"Error getting categories: {str(e)}")
-            raise
+            except Exception as e:
+                print(f"Error getting categories: {str(e)}")
+                raise
 
-    def get_tags(self) -> List[Dict[str, Any]]:
-        """Get all tags from Shopware"""
-        if not self.ensure_token():
-            raise Exception("Could not authenticate with Shopware")
+    def get_tags(self):
+            """Get all tags from Shopware"""
+            if not self.ensure_token():
+                raise Exception("Could not authenticate with Shopware")
 
-        try:
-            response = requests.get(
-                f"{self.base_url}/api/tag",
-                headers={
-                    "Authorization": f"Bearer {self.access_token}",
-                    "Accept": "application/json"
-                }
-            )
+            try:
+                response = requests.get(
+                    f"{self.base_url}/api/tag",
+                    headers={
+                        "Authorization": f"Bearer {self.access_token}",
+                        "Accept": "application/json"
+                    }
+                )
 
-            if response.status_code == 200:
-                return response.json().get('data', [])
-            else:
-                raise Exception(f"Error fetching tags: {response.text}")
+                if response.status_code == 200:
+                    data = response.json()
+                    return [{
+                        "id": item["id"],
+                        "name": item["name"]
+                    } for item in data.get("data", [])]
+                else:
+                    raise Exception(f"Error fetching tags: {response.status_code}")
 
-        except Exception as e:
-            print(f"Error getting tags: {str(e)}")
-            raise
+            except Exception as e:
+                print(f"Error getting tags: {str(e)}")
+                raise
 
     def ensure_token(self) -> bool:
         """Ensure we have a valid token, refresh if needed"""
