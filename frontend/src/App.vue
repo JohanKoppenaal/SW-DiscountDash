@@ -1,9 +1,5 @@
 <template>
   <div class="container py-4">
-    <!-- Debug info -->
-    <div class="small text-muted mb-2">
-      Debug: Settings visible: {{ showSettings }}
-    </div>
     <h1 class="mb-4">Shopware Discount Dashboard</h1>
 
     <!-- Settings button -->

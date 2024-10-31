@@ -30,8 +30,8 @@ export default {
     return {
       credentials: {
         url: 'http://localhost',
-        client_id: 'SWIAWK9TV21VZU9KAHLJQ2HYOA',
-        client_secret: 'MTMxNWhKcnBab1YyNWxiN2ZBcDd0WVNkUm85UnlaYWhqcUZVNlI'
+        client_id: '',
+        client_secret: ''
       }
     }
   },
