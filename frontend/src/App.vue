@@ -38,20 +38,11 @@
             Nieuwe Korting
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link"
-             :class="{ active: activeTab === 'products' }"
-             href="#"
-             @click.prevent="activeTab = 'products'">
-            Producten
-          </a>
-        </li>
       </ul>
 
       <!-- Content -->
       <DiscountList v-if="activeTab === 'discounts'" />
       <CreateDiscount v-else-if="activeTab === 'create-discount'" @discount-created="handleDiscountCreated" />
-      <ProductList v-else-if="activeTab === 'products'" />
     </div>
 
     <!-- Show message when not connected -->
@@ -91,7 +82,6 @@
 import axios from 'axios'
 import DiscountList from './components/DiscountList.vue'
 import CreateDiscount from './components/CreateDiscount.vue'
-import ProductList from './components/ProductList.vue'
 import ShopwareSettings from './components/ShopwareSettings.vue'
 
 export default {
@@ -99,7 +89,6 @@ export default {
   components: {
     DiscountList,
     CreateDiscount,
-    ProductList,
     ShopwareSettings
   },
   data() {

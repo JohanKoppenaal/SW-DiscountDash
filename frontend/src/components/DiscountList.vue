@@ -141,13 +141,17 @@ export default {
     },
 
     async removeDiscount(discount) {
-      if (confirm(`Weet je zeker dat je de korting "${discount.name}" wilt verwijderen?`)) {
+      if (confirm(`Weet je zeker dat je de korting "${discount.name}" wilt verwijderen? Dit zal alle prijzen terugzetten naar hun originele waarde.`)) {
         try {
-          await axios.delete(`http://127.0.0.1:5001/api/discounts/${discount.id}`);
+          console.log('Removing discount:', discount.id);  // Debug log
+          const response = await axios.delete(`http://127.0.0.1:5000/api/discounts/${discount.id}`);
+          console.log('Delete response:', response.data);  // Debug log
+          this.successMessage = 'Korting succesvol verwijderd';
           await this.loadDiscounts();
         } catch (error) {
           console.error('Error removing discount:', error);
-          this.errorMessage = 'Kon korting niet verwijderen';
+          console.error('Error response:', error.response?.data);  // Debug log
+          this.errorMessage = error.response?.data?.message || 'Kon korting niet verwijderen';
         }
       }
     }

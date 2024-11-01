@@ -142,7 +142,17 @@
                       <small class="text-muted d-block">{{ product.number }}</small>
                     </div>
                     <div class="text-end">
-                      <div class="text-primary">€{{ product.price.toFixed(2) }}</div>
+                      <!-- Toon originele prijs als er een listPrice is -->
+                      <div v-if="product.listPrice" class="text-muted">
+                        <small class="text-decoration-line-through">
+                          €{{ product.listPrice.toFixed(2) }}
+                        </small>
+                      </div>
+                      <!-- Huidige prijs -->
+                      <div class="text-primary">
+                        €{{ product.price.toFixed(2) }}
+                      </div>
+                      <!-- Nieuwe prijs na korting -->
                       <small class="text-success" v-if="discountData.percentage">
                         Na korting: €{{ (product.price * (1 - discountData.percentage/100)).toFixed(2) }}
                       </small>

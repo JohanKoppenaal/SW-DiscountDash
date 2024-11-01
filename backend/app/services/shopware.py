@@ -487,26 +487,40 @@ class ShopwareService:
 
     def create_discount(self, name: str, percentage: float, conditions: List[Dict]) -> Dict:
         """Create a new discount and apply it to matching products"""
-        # Eerst matching products ophalen
-        matching_products = self.get_matching_products(conditions)
+        try:
+            print(f"Creating discount '{name}' with {percentage}% discount")  # Debug log
 
-        # Voor elk matching product de korting toepassen
-        results = []
-        for product in matching_products:
-            current_price = product['price'][0]['gross']
-            new_price = current_price * (1 - (percentage / 100))
+            # Eerst alle matchende producten ophalen
+            matching_products = self.get_matching_products(conditions)
+            print(f"Found {len(matching_products)} matching products")  # Debug log
 
-            update_result = self.update_product_prices([{
-                'id': product['id'],
-                'price': new_price,
-                'listPrice': current_price
-            }])
+            # Voor elk matching product de korting toepassen
+            results = []
+            for product in matching_products:
+                try:
+                    current_price = product['price'][0]['gross']
+                    new_price = current_price * (1 - (percentage / 100))
 
-            results.extend(update_result)
+                    update_result = self.update_product_prices([{
+                        'id': product['id'],
+                        'price': new_price,
+                        'listPrice': current_price
+                    }])
 
-        return {
-            'name': name,
-            'percentage': percentage,
-            'affected_products': len(results),
-            'results': results
-        }
+                    results.extend(update_result)
+                    print(f"Updated price for product {product['id']}: {current_price} -> {new_price}")  # Debug log
+
+                except Exception as e:
+                    print(f"Error updating product {product['id']}: {str(e)}")  # Debug log
+                    continue
+
+            return {
+                'name': name,
+                'percentage': percentage,
+                'affected_products': len(results),
+                'results': results
+            }
+
+        except Exception as e:
+            print(f"Error in create_discount: {str(e)}")  # Debug log
+            raise

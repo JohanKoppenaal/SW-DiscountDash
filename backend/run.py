@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from database import save_credentials, get_credentials, get_discounts, save_discount, delete_discount
+from database import save_credentials, get_credentials, get_discounts, save_discount, delete_discount, get_db  # get_db toegevoegd
+import json  # Voeg ook json import toe voor json.loads
 from app.services.shopware import ShopwareService
 
 app = Flask(__name__)
@@ -80,7 +81,16 @@ def create_discount():
                 "message": "Missing required fields"
             }), 400
 
+        # Eerst de korting opslaan in onze database
         discount_id = save_discount(
+            name=data['name'],
+            percentage=float(data['percentage']),
+            conditions=data['conditions']
+        )
+
+        # Dan de korting toepassen in Shopware
+        print("Applying discount to Shopware products...")  # Debug log
+        shopware_result = shopware_service.create_discount(
             name=data['name'],
             percentage=float(data['percentage']),
             conditions=data['conditions']
@@ -88,8 +98,9 @@ def create_discount():
 
         return jsonify({
             "status": "success",
-            "message": "Discount created successfully",
-            "id": discount_id
+            "message": "Discount created and applied successfully",
+            "id": discount_id,
+            "affected_products": shopware_result['affected_products']
         })
     except Exception as e:
         print(f"Error creating discount: {str(e)}")  # Debug log
@@ -101,12 +112,46 @@ def create_discount():
 @app.route('/api/discounts/<int:discount_id>', methods=['DELETE'])
 def delete_discount_route(discount_id):
     try:
+        print(f"Deleting discount {discount_id}")  # Debug log
+
+        # Eerst de korting ophalen
+        with get_db() as db:
+            discount = db.execute("SELECT * FROM discounts WHERE id = ?", (discount_id,)).fetchone()
+            print(f"Found discount: {discount}")  # Debug log
+
+            if not discount:
+                return jsonify({"status": "error", "message": "Discount not found"}), 404
+
+            conditions = json.loads(discount['conditions'])
+            print(f"Parsed conditions: {conditions}")  # Debug log
+
+        # Matchende producten vinden en prijzen resetten
+        print("Finding matching products...")  # Debug log
+        matching_products = shopware_service.get_matching_products(conditions)
+        print(f"Found {len(matching_products)} matching products")  # Debug log
+
+        product_ids = [p['id'] for p in matching_products]
+
+        # Prijzen resetten
+        print("Resetting prices...")  # Debug log
+        if product_ids:
+            shopware_service.restore_product_prices(product_ids)
+
+        # Dan de korting verwijderen
         success = delete_discount(discount_id)
         if success:
-            return jsonify({"status": "success", "message": "Discount deleted successfully"})
-        return jsonify({"status": "error", "message": "Discount not found"}), 404
+            return jsonify({
+                "status": "success",
+                "message": "Discount deleted and prices restored successfully"
+            })
+
+        return jsonify({
+            "status": "error",
+            "message": "Could not delete discount"
+        }), 500
+
     except Exception as e:
-        print(f"Error deleting discount: {str(e)}")
+        print(f"Error deleting discount: {str(e)}")  # Debug log
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
@@ -143,10 +188,8 @@ def preview_matching_products():
         conditions = request.json.get('conditions', [])
         print("Received conditions for preview:", conditions)  # Debug log
 
-        # Gebruik de ShopwareService om matchende producten te vinden
         matching_products = shopware_service.get_matching_products(conditions)
 
-        # Stuur een samenvatting terug
         preview_data = {
             "status": "success",
             "count": len(matching_products),
@@ -156,6 +199,7 @@ def preview_matching_products():
                     "id": p['id'],
                     "name": p['name'],
                     "price": p['price'][0]['gross'] if p.get('price') else 0,
+                    "listPrice": p['price'][0].get('listPrice', {}).get('gross') if p.get('price') and p['price'][0].get('listPrice') else None,
                     "number": p.get('productNumber', '')
                 }
                 for p in matching_products[:5]
@@ -165,7 +209,7 @@ def preview_matching_products():
         return jsonify(preview_data)
 
     except Exception as e:
-        print(f"Error in preview matching products: {str(e)}")  # Debug log
+        print(f"Error in preview matching products: {str(e)}")
         return jsonify({
             "status": "error",
             "message": str(e)
