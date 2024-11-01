@@ -113,12 +113,49 @@
         </div>
       </div>
 
-      <!-- Preview -->
+      <!-- Preview section -->
       <div class="mb-4">
         <h6>Voorvertoning</h6>
         <div class="alert alert-info">
-          <p class="mb-1"><strong>Aantal matchende producten:</strong> {{ matchingProductsCount }}</p>
-          <p class="mb-0"><small>Deze korting zal worden toegepast op producten die voldoen aan de bovenstaande voorwaarden.</small></p>
+          <div v-if="isLoadingPreview" class="text-center">
+            <div class="spinner-border spinner-border-sm me-2"></div>
+            <span>Preview wordt geladen...</span>
+          </div>
+          <div v-else>
+            <p class="mb-2">
+              <strong>Aantal matchende producten:</strong> {{ matchingProductsPreview.count || 0 }}
+            </p>
+            <p class="mb-2" v-if="matchingProductsPreview.total_value">
+              <strong>Totale waarde:</strong> €{{ matchingProductsPreview.total_value.toFixed(2) }}
+            </p>
+
+            <!-- Sample products -->
+            <div v-if="matchingProductsPreview.sample && matchingProductsPreview.sample.length > 0">
+              <p class="mb-2"><strong>Voorbeelden:</strong></p>
+              <div class="list-group">
+                <div v-for="product in matchingProductsPreview.sample"
+                     :key="product.id"
+                     class="list-group-item list-group-item-action">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong>{{ product.name }}</strong>
+                      <small class="text-muted d-block">{{ product.number }}</small>
+                    </div>
+                    <div class="text-end">
+                      <div class="text-primary">€{{ product.price.toFixed(2) }}</div>
+                      <small class="text-success" v-if="discountData.percentage">
+                        Na korting: €{{ (product.price * (1 - discountData.percentage/100)).toFixed(2) }}
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="matchingProductsPreview.count === 0" class="text-muted">
+              Geen producten gevonden die aan de voorwaarden voldoen.
+            </div>
+          </div>
         </div>
       </div>
 
@@ -173,6 +210,12 @@ export default {
             ]
           }
         ]
+      },
+      isLoadingPreview: false,
+      matchingProductsPreview: {
+        count: 0,
+        total_value: 0,
+        sample: []
       }
     }
   },
@@ -312,17 +355,24 @@ export default {
       );
 
       if (!hasValidConditions) {
-        this.matchingProductsCount = 0;
+        this.matchingProductsPreview = {
+          count: 0,
+          total_value: 0,
+          sample: []
+        };
         return;
       }
 
+      this.isLoadingPreview = true;
       try {
         const response = await axios.post('http://127.0.0.1:5000/api/preview-matching-products', {
           conditions: this.discountData.conditions
         });
-        this.matchingProductsCount = response.data.count;
+        this.matchingProductsPreview = response.data;
       } catch (error) {
         console.error('Error getting matching products:', error);
+      } finally {
+        this.isLoadingPreview = false;
       }
     },
 

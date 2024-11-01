@@ -141,15 +141,35 @@ def get_tags_route():
 def preview_matching_products():
     try:
         conditions = request.json.get('conditions', [])
-        # Voor nu, een dummy aantal teruggeven
-        return jsonify({
+        print("Received conditions for preview:", conditions)  # Debug log
+
+        # Gebruik de ShopwareService om matchende producten te vinden
+        matching_products = shopware_service.get_matching_products(conditions)
+
+        # Stuur een samenvatting terug
+        preview_data = {
             "status": "success",
-            "count": 42,  # Dummy aantal
-            "sample": []  # Later kunnen we hier voorbeeldproducten toevoegen
-        })
+            "count": len(matching_products),
+            "total_value": sum(p['price'][0]['gross'] for p in matching_products if p.get('price')),
+            "sample": [  # Eerste 5 producten als voorbeeld
+                {
+                    "id": p['id'],
+                    "name": p['name'],
+                    "price": p['price'][0]['gross'] if p.get('price') else 0,
+                    "number": p.get('productNumber', '')
+                }
+                for p in matching_products[:5]
+            ]
+        }
+
+        return jsonify(preview_data)
+
     except Exception as e:
-        print(f"Error preview matching products: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        print(f"Error in preview matching products: {str(e)}")  # Debug log
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 if __name__ == '__main__':
     print("Starting Flask server...")  # Debug log
