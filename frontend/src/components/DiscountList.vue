@@ -77,6 +77,37 @@ export default {
     }
   },
   methods: {
+    async loadReferenceData() {
+      try {
+        const [manufacturersRes, categoriesRes, tagsRes] = await Promise.all([
+          axios.get('http://127.0.0.1:5000/api/product-manufacturer'),
+          axios.get('http://127.0.0.1:5000/api/category'),
+          axios.get('http://127.0.0.1:5000/api/tag')
+        ]);
+
+        this.manufacturers = manufacturersRes.data.data;
+        this.categories = categoriesRes.data.data;
+        this.tags = tagsRes.data.data;
+      } catch (error) {
+        console.error('Error loading reference data:', error);
+      }
+    },
+
+    async loadDiscounts() {
+      this.isLoading = true;
+      this.errorMessage = '';
+      try {
+        await this.loadReferenceData();  // Eerst referentie data laden
+        const response = await axios.get('http://127.0.0.1:5000/api/discounts');
+        this.discounts = response.data.data;
+      } catch (error) {
+        console.error('Error loading discounts:', error);
+        this.errorMessage = 'Kon kortingen niet laden';
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     getValueLabel(condition) {
       let item;
       switch (condition.type) {
@@ -105,43 +136,8 @@ export default {
           tag: 'Tag'
         }[c.type];
         const operator = c.operator === 'equals' ? 'is' : 'is niet';
-
-        // Use the resolved name that was sent from the backend
-        return `${type} ${operator} ${c.name}`;
+        return `${type} ${operator} ${this.getValueLabel(c)}`; // Hier gebruiken we getValueLabel
       }).join(` ${group.operator} `);
-    },
-
-    async loadReferenceData() {
-      try {
-        const [manufacturersRes, categoriesRes, tagsRes] = await Promise.all([
-          axios.get('http://127.0.0.1:5001/api/product-manufacturer'),
-          axios.get('http://127.0.0.1:5001/api/category'),
-          axios.get('http://127.0.0.1:5001/api/tag')
-        ]);
-
-        this.manufacturers = manufacturersRes.data.data;
-        this.categories = categoriesRes.data.data;
-        this.tags = tagsRes.data.data;
-      } catch (error) {
-        console.error('Error loading reference data:', error);
-        this.errorMessage = 'Kon referentiedata niet laden';
-      }
-    },
-
-    async loadDiscounts() {
-      this.isLoading = true;
-      this.errorMessage = '';
-      try {
-        console.log('Starting to load discounts...');  // Debug log
-        const response = await axios.get('http://127.0.0.1:5000/api/discounts');
-        console.log('Response:', response.data);  // Debug log
-        this.discounts = response.data.data;
-      } catch (error) {
-        console.error('Error loading discounts:', error.response?.data || error);
-        this.errorMessage = 'Kon kortingen niet laden';
-      } finally {
-        this.isLoading = false;
-      }
     },
 
     async removeDiscount(discount) {

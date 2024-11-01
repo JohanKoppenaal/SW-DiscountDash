@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from database import save_credentials, get_credentials, get_discounts, save_discount, delete_discount
-from shopware import ShopwareService
+from app.services.shopware import ShopwareService
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "http://localhost:8080", "supports_credentials": True}})
